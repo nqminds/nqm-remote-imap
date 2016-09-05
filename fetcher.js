@@ -1,3 +1,4 @@
+var debug = require('debug')('Fetcher');
 var config = require("./config");
 var TDXApi = require("nqm-api-tdx");
 var imapTableAPI = new TDXApi(config);
@@ -6,11 +7,17 @@ var mailTableAPI = new TDXApi(config);
 var Imap = require('imap');
 var inspect = require('util').inspect;
 
-imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass, function(imaperr, accessToken){
 
+debug('Trying to authenticate into TBX with token: '+config.byodimapboxes_token+' and password: '+config.byodimapboxes_Pass+' ...');
+
+
+imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass, function(imaperr, accessToken){
+	
 	if (imaperr) throw imaperr;
 	
 	if (imaperr==null) {
+		debug('Access token:'+accessToken);
+		
         imapTableAPI.query("datasets/"+config.byodimapboxes_ID+"/data", null, null, null, function(imapqerr, data) {
 
 			if (imapqerr) throw imapqerr;
@@ -38,7 +45,7 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
 
 								if (mailtableerr) throw mailtableerr;
 
-    							var f, endstr = '1:0';
+    							var f, endstr='1:0';
 
 								if (imapel.total==0 && box.messages.total!=0)
 									endstr = '1:*'
@@ -90,12 +97,12 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
       								});
 
       								msg.once('end', function() {
-										mailTableAPI.addDatasetData(imapel.mailtableid, mailtabledata, mailtableaccessToken, function(mailadddataerr, mailadddatabody){
-											if (mailadddataerr) throw mailadddataerr;
+										//mailTableAPI.addDatasetData(imapel.mailtableid, mailtabledata, mailtableaccessToken, function(mailadddataerr, mailadddatabody){
+											//if (mailadddataerr) throw mailadddataerr;
 
-											console.log(mailtabledata);	
+											//console.log(mailtabledata);	
         									console.log(prefix + 'Finished');
-										});
+										//});
       								});
     							});
 
@@ -125,3 +132,4 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
         });
     }
 });
+
