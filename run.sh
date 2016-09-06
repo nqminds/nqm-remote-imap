@@ -1,0 +1,2 @@
+DEBUG=* nodejs fetcher.js
+
