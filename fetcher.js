@@ -25,6 +25,7 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
 			else {
 				data.data.forEach(function(imapel){
 					var firstfetch =false;
+					var _mailTableToken;
 					var nmsg = 0;
 					var nnewmsg = 0;
 					var imap = new Imap({
@@ -40,6 +41,84 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
 
 					function openInbox(cb) {
   						imap.openBox(imapel.mailboxname, false, cb);
+					}
+
+					function fetchMessages(endstr, cb){
+						var unseenlistid = [];
+						var tabledata = [];
+						var f = imap.seq.fetch(endstr, {
+                        			bodies: ['HEADER','TEXT'],
+                                    struct: true
+                                });
+
+                        f.on('message', function(msg, seqno) {
+                            var mailtabledata = {uid:0, modseq:'', to:'', from:'', subject:'', date:'', text:'', textcount:0, flags:''};
+                        	var mailheader = '';
+							var mailbody = '';
+							debug('Message #%d', seqno);
+
+                            msg.on('body', function(stream, info) {
+                            	var buffer = '';
+                            	var count = 0;
+
+                            	stream.on('data', function(chunk) {
+                            		count += chunk.length;
+                            		buffer += chunk.toString('utf8');
+                            	});
+
+                            	stream.once('end', function() {
+                            		if (info.which === 'HEADER') {
+
+                                		if (Imap.parseHeader(buffer).date!==undefined)
+											mailtabledata.date = Imap.parseHeader(buffer).date.join(',');
+
+										if (Imap.parseHeader(buffer).to!==undefined)
+	                                		mailtabledata.to = Imap.parseHeader(buffer).to.join(',');
+
+   										if (Imap.parseHeader(buffer).from!==undefined) 
+	                            			mailtabledata.from = Imap.parseHeader(buffer).from.join(',');
+
+										if (Imap.parseHeader(buffer).subject!==undefined)
+                                			mailtabledata.subject = Imap.parseHeader(buffer).subject.join(',');
+
+										mailheader = buffer;
+                                	} else mailbody = buffer;
+
+                                	mailtabledata.textcount += count;
+                            	});
+                         	});
+
+                            msg.once('attributes', function(attrs) {
+								var labellist = attrs['x-gm-labels'];
+                            	mailtabledata.uid = attrs.uid;
+                            	mailtabledata.modseq = attrs.modseq;
+                            	mailtabledata.flags = attrs.flags.join(',');
+								if(labellist.length>0 && attrs.flags.length>0)
+									mailtabledata.flags+=',';
+								mailtabledata.flags+=labellist.join(',');
+						
+							});
+
+                            msg.once('end', function() {
+								mailtabledata.text = mailheader+mailbody;
+
+								tabledata.push(mailtabledata);
+                            	if (mailtabledata.flags.indexOf('\Seen')<0)
+                                	unseenlistid.push(seqno.toString());
+                            });
+                        });
+
+                        f.once('error', function(err) {
+                        	debug('Fetch error: ' + err);
+							cb([],[],err);
+                        });
+
+                        f.once('end', function() {
+                            debug('Done fetching all messages!');
+                            firstfetch = true;
+					
+                            cb(tabledata, unseenlistid, null);
+                        });
 					}
 
 					imap.once('ready', function() {
@@ -59,80 +138,32 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
 
 								if (mailtableerr) throw mailtableerr;
 
-    							var f, endstr='1:0';
-								var unseenlistid = [];
+    							var endstr='1:*';
 
-								if (imapel.total==0 && box.messages.total!=0)
-									endstr = '1:*'
-								else if (imapel.total!=0)
-									endstr = '1:'+box.messages.new;
+								_mailTableToken = mailtableaccessToken;
 
-    							f = imap.seq.fetch(endstr, {
-      								bodies: ['HEADER', 'TEXT'],
-      								struct: true
-    							});
+								function fetchAndSaveMail() {
+                                    fetchMessages(endstr, function(tabledata, unseenlistid, fetchmsgerr){
+                                        if (fetchmsgerr) throw fetchmsgerr;
 
-    							f.on('message', function(msg, seqno) {
-      								debug('Message #%d', seqno);
-      								var prefix = '(#' + seqno + ') ';
-									var mailtabledata = {uid:0, modseq:'', to:'', from:'', subject:'', date:'', text:'', textcount:0, flags:''};
+                                        mailTableAPI.addDatasetData(imapel.mailtableid, tabledata, _mailTableToken, function(mailadddataerr, mailadddatabody){
+                                        	if (mailadddataerr) throw mailadddataerr;
 
-									msg.on('body', function(stream, info) {
-        								var buffer = '';
-										var count = 0;
+											if (unseenlistid.length>0 && config.markAsSeen) {
+                                            	imap.seq.setFlags(unseenlistid, '\Seen', function(setflagerr){
+                                                	if (setflagerr) throw setflagerr;
+                                            	});
+                                        	}		
+                                        });
+                                    });
+								}
 
-        								stream.on('data', function(chunk) {
-          									count += chunk.length;
-											buffer += chunk.toString('utf8');
-        								});
-
-        								stream.once('end', function() {
-											if (info.which === 'HEADER') {
-												mailtabledata.date = Imap.parseHeader(buffer).date.join(',');
-												mailtabledata.to = Imap.parseHeader(buffer).to.join(',');
-												mailtabledata.from = Imap.parseHeader(buffer).from.join(',');
-												mailtabledata.subject = Imap.parseHeader(buffer).subject.join(',');
-											} else if (info.which === 'TEXT') {
-												mailtabledata.text = buffer;
-												mailtabledata.textcount = count;
-											}
-        								});
-      								});
-
-      								msg.once('attributes', function(attrs) {
-										mailtabledata.uid = attrs.uid;
-										mailtabledata.modseq = attrs.modseq;
-										mailtabledata.flags = attrs.flags.join(',');
-      								});
-
-      								msg.once('end', function() {
-										if (mailtabledata.flags.indexOf('\Seen')<0)
-											unseenlistid.push(seqno.toString());
-
-										//mailTableAPI.addDatasetData(imapel.mailtableid, mailtabledata, mailtableaccessToken, function(mailadddataerr, mailadddatabody){
-											//if (mailadddataerr) throw mailadddataerr;
-
-											//console.log(mailtabledata);	
-        									debug(prefix + 'Finished');
-										//});
-      								});
-    							});
-
-    							f.once('error', function(err) {
-      								debug('Fetch error: ' + err);
-    							});
-
-    							f.once('end', function() {
-									debug('Unseen messages ids:'+unseenlistid);
-                                    debug('Done fetching all messages!');
-                                   	if (unseenlistid.length>0) { 
-										imap.seq.setFlags(unseenlistid, '\Seen', function(setflagerr){
-                                    		if (setflagerr) throw setflagerr;               
-										});
-									}
-
-									firstfetch = true;
-    							});
+								if (config.truncateOnStart) {
+									mailTableAPI.truncateDataset(imapel.mailtableid, _mailTableToken, function (truncateerr, truncatebody){
+										if (truncateerr) throw truncateerr;
+										fetchAndSaveMail();
+									});
+								} else fetchAndSaveMail();
 							});
 
   						});
@@ -143,10 +174,19 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
 						if (firstfetch) {
 							nmsg = nmsg + numNewMsgs	
 							endstr = nmsgold+':'+nmsg;
-							debug('New message:'+numNewMsgs);
-							var f = imap.seq.fetch(endstr, {
-								bodies: ['HEADER', 'TEXT'],
-                                struct: true
+
+                            fetchMessages(endstr, function(tabledata, unseenlistid, fetchmsgerr){
+                            	if (fetchmsgerr) throw fetchmsgerr;
+
+                            	mailTableAPI.addDatasetData(imapel.mailtableid, tabledata, _mailTableToken, function(mailadddataerr, mailadddatabody){
+                            		if (mailadddataerr) throw mailadddataerr;
+
+                            		if (unseenlistid.length>0 && config.markAsSeen) {
+                            			imap.seq.setFlags(unseenlistid, '\Seen', function(setflagerr){
+                            				if (setflagerr) throw setflagerr;
+                            			}); 
+                                    }    
+                                });
                             });
 						}
 					});
