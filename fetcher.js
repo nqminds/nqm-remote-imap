@@ -144,24 +144,26 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
 
 								function fetchAndSaveMail() {
                                     fetchMessages(endstr, function(tabledata, unseenlistid, fetchmsgerr){
-                                        if (fetchmsgerr) throw fetchmsgerr;
-
-                                        mailTableAPI.addDatasetData(imapel.mailtableid, tabledata, _mailTableToken, function(mailadddataerr, mailadddatabody){
-                                        	if (mailadddataerr) throw mailadddataerr;
-
-											if (unseenlistid.length>0 && config.markAsSeen) {
-                                            	imap.seq.setFlags(unseenlistid, '\Seen', function(setflagerr){
-                                                	if (setflagerr) throw setflagerr;
-                                            	});
-                                        	}		
-                                        });
+                                        if (fetchmsgerr) debug(fetchmsgerr);
+                                        else {
+                                            mailTableAPI.addDatasetData(imapel.mailtableid, tabledata, _mailTableToken, function(mailadddataerr, mailadddatabody){
+                                        	    if (mailadddataerr) debug(mailadddataerr);
+                                                else {
+											        if (unseenlistid.length>0 && config.markAsSeen) {
+                                            	        imap.seq.setFlags(unseenlistid, '\Seen', function(setflagerr){
+                                                	        if (setflagerr) debug(setflagerr);
+                                            	        });
+                                        	        }
+                                                }
+                                            });
+                                        }
                                     });
 								}
 
 								if (config.truncateOnStart) {
 									mailTableAPI.truncateDataset(imapel.mailtableid, _mailTableToken, function (truncateerr, truncatebody){
-										if (truncateerr) throw truncateerr;
-										fetchAndSaveMail();
+										if (truncateerr) debug(truncateerr);
+                                        else fetchAndSaveMail();
 									});
 								} else fetchAndSaveMail();
 							});
@@ -176,17 +178,19 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
 							endstr = nmsgold+':'+nmsg;
 
                             fetchMessages(endstr, function(tabledata, unseenlistid, fetchmsgerr){
-                            	if (fetchmsgerr) throw fetchmsgerr;
-
-                            	mailTableAPI.addDatasetData(imapel.mailtableid, tabledata, _mailTableToken, function(mailadddataerr, mailadddatabody){
-                            		if (mailadddataerr) throw mailadddataerr;
-
-                            		if (unseenlistid.length>0 && config.markAsSeen) {
-                            			imap.seq.setFlags(unseenlistid, '\Seen', function(setflagerr){
-                            				if (setflagerr) throw setflagerr;
-                            			}); 
-                                    }    
-                                });
+                            	if (fetchmsgerr) debug(fetchmsgerr);
+                                else {
+                            	    mailTableAPI.addDatasetData(imapel.mailtableid, tabledata, _mailTableToken, function(mailadddataerr, mailadddatabody){
+                            		    if (mailadddataerr) debug(mailadddataerr);
+                                        else {
+                            		        if (unseenlistid.length>0 && config.markAsSeen) {
+                            			        imap.seq.setFlags(unseenlistid, '\Seen', function(setflagerr){
+                            				        if (setflagerr) debug(setflagerr);
+                            			        }); 
+                                            }
+                                        }    
+                                    });
+                                }
                             });
 						}
 					});
