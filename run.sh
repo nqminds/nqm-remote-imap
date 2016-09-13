@@ -1,2 +1,2 @@
-DEBUG=* nodejs fetcher.js
+DEBUG=fetcher nodejs fetcher.js
 

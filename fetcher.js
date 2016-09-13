@@ -1,12 +1,12 @@
-var debug = require('debug')('Fetcher');
+var debug = require('debug')('fetcher');
 var config = require("./config");
 var TDXApi = require("nqm-api-tdx");
 var imapTableAPI = new TDXApi(config);
-var mailTableAPI = new TDXApi(config);
 
 var Imap = require('imap');
 var inspect = require('util').inspect;
-
+var idTable = [];
+var mailTableDict = {};
 
 debug('Auth into TBX with token: '+config.byodimapboxes_token+' and password: '+config.byodimapboxes_Pass+' ...');
 
@@ -17,20 +17,33 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
 	
 	if (imaperr==null) {
 		debug('Access token:'+accessToken);
-		
+
         imapTableAPI.query("datasets/"+config.byodimapboxes_ID+"/data", null, null, null, function(imapqerr, data) {
 
 			if (imapqerr) throw imapqerr;
 
 			else {
+/*
+				data.data.forEach(function(imapel){
+					idTable.push(imapel.userID);
+				});
+
+				debug(idTable);
+				imapTableAPI.query("datasets/" + config.byodimapboxes_ID + "/data", {userID:{$nin:idTable}}, null, null, function (qerr, qdata) {
+					if(qerr) throw qerr;
+					else
+						debug(qdata);
+				});
+*/
+///*				
 				data.data.forEach(function(imapel){
 					var firstfetch =false;
 					var _mailTableToken;
 					var nmsg = 0;
 					var nnewmsg = 0;
 					var imap = new Imap({
-  						user: imapel.userid,
-  						password: imapel.userpass,
+  						user: imapel.imapuserid,
+  						password: imapel.imapuserpass,
  	 					host: imapel.imaphost,
   						port: imapel.imapport,
   						tls: imapel.imaptls,
@@ -38,6 +51,8 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
             				debug(d)              
          				}
 					});
+
+					var mailTableAPI = new TDXApi(config);
 
 					function openInbox(cb) {
   						imap.openBox(imapel.mailboxname, false, cb);
@@ -146,7 +161,7 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
                                     fetchMessages(endstr, function(tabledata, unseenlistid, fetchmsgerr){
                                         if (fetchmsgerr) debug(fetchmsgerr);
                                         else {
-                                            mailTableAPI.addDatasetData(imapel.mailtableid, tabledata, _mailTableToken, function(mailadddataerr, mailadddatabody){
+                                            mailTableAPI.addDatasetData(imapel.mailtableid, tabledata, function(mailadddataerr, mailadddatabody){
                                         	    if (mailadddataerr) debug(mailadddataerr);
                                                 else {
 											        if (unseenlistid.length>0 && config.markAsSeen) {
@@ -180,7 +195,7 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
                             fetchMessages(endstr, function(tabledata, unseenlistid, fetchmsgerr){
                             	if (fetchmsgerr) debug(fetchmsgerr);
                                 else {
-                            	    mailTableAPI.addDatasetData(imapel.mailtableid, tabledata, _mailTableToken, function(mailadddataerr, mailadddatabody){
+                            	    mailTableAPI.addDatasetData(imapel.mailtableid, tabledata, function(mailadddataerr, mailadddatabody){
                             		    if (mailadddataerr) debug(mailadddataerr);
                                         else {
                             		        if (unseenlistid.length>0 && config.markAsSeen) {
@@ -205,8 +220,10 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
 
 					imap.connect();
 				});
+//*/	
 			}
-        });
+    
+	    });
     }
 });
 
