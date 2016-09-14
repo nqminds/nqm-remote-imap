@@ -6,5 +6,6 @@
 	"byodimapboxes_ID":"r1xRybWFu",
 	"byodimapboxes_Pass":"",
 	"markAsSeen":true,
-	"truncateOnStart":true
+	"truncateOnStart":true,
+	"imapboxTimer": 10000
 }

@@ -23,34 +23,48 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
 			if (imapqerr) throw imapqerr;
 
 			else {
-/*
+
 				data.data.forEach(function(imapel){
 					idTable.push(imapel.userID);
 				});
 
-				debug(idTable);
-				imapTableAPI.query("datasets/" + config.byodimapboxes_ID + "/data", {userID:{$nin:idTable}}, null, null, function (qerr, qdata) {
-					if(qerr) throw qerr;
-					else
-						debug(qdata);
-				});
-*/
-///*				
+				setInterval(function(){
+					imapTableAPI.query("datasets/" + config.byodimapboxes_ID + "/data", {userID:{$nin:idTable}}, null, null, function (qerr, qdata) {
+	                	if(qerr) throw qerr;
+                     	else {
+							qdata.data.forEach(function(imapel){
+                    			idTable.push(imapel.userID);
+                			});
+
+                			qdata.data.forEach(function(imapel){
+                    			ImapFetcher(imapel);
+                			});
+
+							if (qdata.length) debug(qdata);
+						}
+	                 });
+				}, config.imapboxTimer);
+
 				data.data.forEach(function(imapel){
-					var firstfetch =false;
-					var _mailTableToken;
-					var nmsg = 0;
-					var nnewmsg = 0;
-					var imap = new Imap({
-  						user: imapel.imapuserid,
-  						password: imapel.imapuserpass,
- 	 					host: imapel.imaphost,
-  						port: imapel.imapport,
-  						tls: imapel.imaptls,
-						debug: function(d) {
-            				debug(d)              
-         				}
-					});
+					ImapFetcher(imapel);
+				});
+
+				function ImapFetcher(imapel) {
+                    var firstfetch =false;
+                    var _mailTableToken;
+                    var nmsg = 0;
+                    var nnewmsg = 0;
+                    var imap = new Imap({
+                        user: imapel.imapuserid,
+                        password: imapel.imapuserpass,
+                        host: imapel.imaphost,
+                        port: imapel.imapport,
+                        tls: imapel.imaptls,
+                        keepalive: {forceNoop: true},
+                        debug: function(d) {
+                            debug(d)
+                        }
+                    });
 
 					var mailTableAPI = new TDXApi(config);
 
@@ -219,10 +233,8 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
 					});
 
 					imap.connect();
-				});
-//*/	
+				}
 			}
-    
 	    });
     }
 });
