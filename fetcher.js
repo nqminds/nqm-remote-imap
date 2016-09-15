@@ -225,7 +225,7 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
 					});
 
 					imap.once('error', function(err) {
-  						debug(err);
+  						debug("Imap error:"+err);
 					});
 
 					imap.once('end', function() {
