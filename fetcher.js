@@ -230,6 +230,8 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
 
 					imap.once('end', function() {
   						debug('Connection ended');
+						debug('Restarting again:');
+						imap.connect();
 					});
 
 					imap.connect();
