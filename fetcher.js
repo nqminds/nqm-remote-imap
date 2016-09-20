@@ -13,14 +13,14 @@ debug('Auth into TBX with token: '+config.byodimapboxes_token+' and password: '+
 
 imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass, function(imaperr, accessToken){
 	
-	if (imaperr) throw imaperr;
+	if (imaperr) debug(imaperr);
 	
 	if (imaperr==null) {
 		debug('Access token:'+accessToken);
 
         imapTableAPI.query("datasets/"+config.byodimapboxes_ID+"/data", null, null, null, function(imapqerr, data) {
 
-			if (imapqerr) throw imapqerr;
+			if (imapqerr) debug(imapqerr);
 
 			else {
 
@@ -30,7 +30,7 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
 
 				setInterval(function(){
 					imapTableAPI.query("datasets/" + config.byodimapboxes_ID + "/data", {userID:{$nin:idTable}}, null, null, function (qerr, qdata) {
-	                	if(qerr) throw qerr;
+	                	if(qerr) debug(qerr);
                      	else {
 							qdata.data.forEach(function(imapel){
                     			idTable.push(imapel.userID);
