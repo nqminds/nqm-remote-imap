@@ -60,7 +60,11 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
                         host: imapel.imaphost,
                         port: imapel.imapport,
                         tls: imapel.imaptls,
-                        keepalive: {forceNoop: true},
+                        keepalive: {
+                            interval: 10000,
+                            idleInterval: 60000,
+                            forceNoop: true
+                        },
                         debug: function(d) {
                             debug(d)
                         }
@@ -170,7 +174,7 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
     							var endstr='1:*';
 
 								_mailTableToken = mailtableaccessToken;
-
+                                
 								function fetchAndSaveMail() {
                                     fetchMessages(endstr, function(tabledata, unseenlistid, fetchmsgerr){
                                         if (fetchmsgerr) debug(fetchmsgerr);
@@ -189,12 +193,17 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
                                     });
 								}
 
-								if (config.truncateOnStart) {
+								if (config.truncateOnStart && config.imapReUpload) {
 									mailTableAPI.truncateDataset(imapel.mailtableid, _mailTableToken, function (truncateerr, truncatebody){
 										if (truncateerr) debug(truncateerr);
                                         else fetchAndSaveMail();
 									});
-								} else fetchAndSaveMail();
+								} else if (config.imapReUpload) fetchAndSaveMail();
+                                else if (!config.imapReUpload) {
+                                        fetchMessages("1:1", function(tabledata, unseenlistid, fetchmsgerr){
+                                            if (fetchmsgerr) debug(fetchmsgerr);
+                                        });
+                                }
 							});
 
   						});
@@ -231,7 +240,7 @@ imapTableAPI.authenticate(config.byodimapboxes_token, config.byodimapboxes_Pass,
 					imap.once('end', function() {
   						debug('Connection ended');
 						debug('Restarting again:');
-						imap.connect();
+						process.exit(1);
 					});
 
 					imap.connect();
